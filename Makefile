@@ -6,7 +6,7 @@ AR=ar
 
 BINS= simplefs_test
 
-OBJS = #add here your object files
+OBJS = bitmap.o disk_driver.o file_system.o
 
 HEADERS=bitmap.h\
 	disk_driver.h\
