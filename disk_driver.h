@@ -10,6 +10,7 @@ typedef struct {
 
 typedef struct {
   DiskHeader* header; // mmapped
+  BitMap* map;
   int fd; // for us
 } DiskDriver;
 

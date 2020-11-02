@@ -3,7 +3,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-// opens the file (creating it if necessary_
+// opens the file (creating it if necessary)
 // allocates the necessary space on the disk
 // calculates how big the bitmap should be
 // if the file was new
@@ -49,13 +49,19 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 
 		disk->header = (DiskHeader*) mmap(0, sizeof(DiskHeader)+(num_blocks*BLOCK_SIZE), PROT_READ | PROT_WRITE, MAP_SHARED, file, 0);
 		disk->header->num_blocks = num_blocks;
-		disk->header->free_blocks = num_blocks ;
+		disk->header->free_blocks = num_blocks;
+		
 	}
 	
 	
 	lseek(file, 0, SEEK_SET);
 	disk->header->first_free_block = DiskDriver_getFreeBlock(disk,0);
-
+	
+	// bitmap initialization
+	disk->map = (BitMap*) malloc(sizeof(BitMap)); 
+	disk->map->entries = (char*) malloc(size*sizeof(char));
+	disk->map->num_bits = num_blocks;
+	
 	return;
 }
 
@@ -63,7 +69,12 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 // reads the block in position block_num
 // returns -1 if the block is free accrding to the bitmap
 // 0 otherwise
-int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){}
+int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
+	
+	
+	
+	return 0;
+}
 
 // writes a block in position block_num, and alters the bitmap accordingly
 // returns -1 if operation not possible
