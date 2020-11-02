@@ -7,10 +7,10 @@
 // "num" will be converted in 2 values: bitmap entry index and offset inside the array
 BitMapEntryKey BitMap_blockToIndex(int num) {
 	BitMapEntryKey block_info;
-	// computing the bitmap entry index
+	// computes the bitmap entry index
 	block_info.entry_num = num / 8 ;
 	// 
-	// computing the actual position offset inside the array
+	// computes the actual position offset inside the array
 	block_info.bit_num = num % 8;
 	return block_info;
 }
@@ -27,7 +27,7 @@ int BitMap_indexToBlock(BitMapEntryKey entry) {
 	// security check on the bitmap's size
 	if(pos > bitmap->num_bits) return -1;
 
-	// declaring the bitmap entry key and bit mask
+	// declares the bitmap entry key and bit mask
     BitMapEntryKey block_info = BitMap_blockToIndex(pos);
 	uint8_t mask = 1 << (7 - block_info.bit_num);
 
@@ -57,7 +57,7 @@ int BitMap_get(BitMap* bitmap, int start, int status) {
 		BitMapEntryKey block_info = BitMap_blockToIndex(idx);
 	 	res = bitmap->entries[block_info.entry_num] & (1 << (7 - block_info.bit_num)); 
 
-		// if status==1, "res" must be greater than 0
+		// if status is 1, "res" must be greater than 0
 		if(status) {
 			if(res > 0) return idx;
 		}else{
