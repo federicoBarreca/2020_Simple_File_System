@@ -1,14 +1,15 @@
 #include "bitmap.c"
 #include "disk_driver.c"
 #include "simplefs.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h> 
 #include <fcntl.h> 
 #include <unistd.h>
 #include <stdlib.h>
+
 #define BLOCKS 999
+#define TEST_PATH "test.txt"
 
 int main(int argc, char** argv) {
 	
@@ -75,17 +76,87 @@ int main(int argc, char** argv) {
 		
 		printf("BitMap_get(bitmap, 0, 0) returns -> %d    {Expected: 0}\n", BitMap_get(bitmap, 0, 0));
 	
-		printf("\nFreeing bitmap\n");
-		free(bitmap->entries);
-		free(bitmap);
+		printf("\nDestroying bitmap\n");
+		BitMap_destroy(bitmap);
 		
 	}
 	//DISK DRIVER TEST
 	else if(strcmp(test, "diskdriver") == 0){
 		printf("DISK DRIVER FUNCTIONS TEST\n");
 		
+		// DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks)
+		printf("\n*** Testing DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks) ***\n");
+		DiskDriver* disk = (DiskDriver*) malloc(sizeof(DiskDriver));
+		DiskDriver_init(disk, TEST_PATH, BLOCKS);
+		
+		int block_num = disk->header->first_free_block;
+		
+		if(block_num == -1){
+			printf("Disk driver initialization error\n");
+			return 0;
+		}
+		
+		printf("\nDisk driver and bitmap correctly initialized\n");
+		printf("First free block index = %d\n", block_num);
+		
+		// DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num)
+		// DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num)
+		printf("\n*** Testing DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num) ***\n");
+		printf("\n*** Testing DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num) ***\n");
+		
+		char* in = "pippo";
+		void* src = (void*) in;
+
+		printf("\nWriting data = %s in block %d\n", in, block_num);
+		int ret = DiskDriver_writeBlock(disk, src, block_num);
+		printf("Function returned %d, data successfully written in block %d\n", ret, block_num);
+
+		void* dest = (void*) malloc(BLOCK_SIZE);
+		printf("\nRetrieving data from block %d\n", block_num);
+		ret = DiskDriver_readBlock(disk, dest, block_num);
+		printf("Function returned %d, data = %s\n", ret, (char*)dest);
+
+		printf("\nWriting data in block: %d\n", -1);
+		ret = DiskDriver_writeBlock(disk, src, -1);
+		printf("Function returned %d, data not written in block %d\n", ret, -1);
+
+		printf("\nWriting data in block: %d\n", block_num+3);
+		ret = DiskDriver_writeBlock(disk, "prova", block_num+3);
+		printf("Function returned %d, data successfully written in block %d\n", ret, block_num+3);
+  
+		//~ DiskDriver_getFreeBlock(DiskDriver* disk, int start)
+		//~ DiskDriver_freeBlock(DiskDriver* disk, int block_num)
+		printf("\n*** Testing DiskDriver_getFreeBlock(DiskDriver* disk, int start) ***\n");
+		printf("\n*** Testing DiskDriver_freeBlock(DiskDriver* disk, int block_num) ***\n");
+		
+		block_num = DiskDriver_getFreeBlock(disk, 0);
+		printf("\nCurrent first free block = %d\n", block_num);
+		
+		ret = DiskDriver_freeBlock(disk, 0);
+		printf("\nBlock %d freed with return value = %d\n", 0, ret);
+		
+		ret = DiskDriver_freeBlock(disk, block_num+3);
+		printf("\nBlock %d freed with return value = %d\n", block_num, ret);
+		
+		block_num = DiskDriver_getFreeBlock(disk, 0);
+		printf("\nCurrent first free block = %d\n", block_num);
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		printf("\nDestroying disk driver\n");
+		DiskDriver_destroy(disk);
+		
 	}
-	//FILE SYSTEM TESTs
+	//FILE SYSTEM TEST
 	else if(strcmp(test, "simplefs") == 0){
 		printf("SIMPLE FILE SYSTEM TEST\n");
 		

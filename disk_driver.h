@@ -45,3 +45,6 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start);
 
 // writes the data (flushing the mmaps)
 int DiskDriver_flush(DiskDriver* disk);
+
+// frees disk driver resources
+int DiskDriver_destroy(DiskDriver* disk);

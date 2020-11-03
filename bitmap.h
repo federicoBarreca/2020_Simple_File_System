@@ -23,3 +23,6 @@ int BitMap_get(BitMap* bmap, int start, int status);
 
 // sets the bit at index pos in bmap to status
 int BitMap_set(BitMap* bmap, int pos, int status);
+
+// frees bitmap resources
+int BitMap_destroy(BitMap* bmap);

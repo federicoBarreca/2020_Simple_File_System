@@ -24,21 +24,21 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 		file_descriptor = open(filename, O_RDWR, 0666);
 		
 		if(!file_descriptor) {
-			printf("File opening error");
+			printf("File opening error\n");
 			return;
 		}
 
 		// DiskHeader and bitmap allocation
-		int ret = posix_fallocate(file_descriptor, 0, sizeof(DiskHeader)+num_blocks+num_blocks*BLOCK_SIZE);
+		int ret = posix_fallocate(file_descriptor, 0, sizeof(DiskHeader) + num_blocks + num_blocks*BLOCK_SIZE);
 		
 		if(!ret){
-			printf("DiskHeader already allocated");
+			printf("DiskHeader already allocated\n");
 		}
 		
 		disk->fd = file_descriptor;
 		
 		//DiskHeader and bitmap mmapped
-		disk->header = (DiskHeader*) mmap(0, sizeof(DiskHeader)+num_blocks+num_blocks*BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, file_descriptor, 0);
+		disk->header = (DiskHeader*) mmap(0, sizeof(DiskHeader) + num_blocks + num_blocks*BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, file_descriptor, 0);
 		
 	}else{ //file doesn't exists
 		//file creation and opening
@@ -49,11 +49,11 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 			return;
 		}
 
-		int ret = posix_fallocate(file_descriptor, 0, sizeof(DiskHeader)+num_blocks+num_blocks*BLOCK_SIZE);
+		int ret = posix_fallocate(file_descriptor, 0, sizeof(DiskHeader) + num_blocks + num_blocks*BLOCK_SIZE);
 
 		disk->fd=file_descriptor;
 
-		disk->header = (DiskHeader*) mmap(0, sizeof(DiskHeader)+num_blocks+num_blocks*BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, file_descriptor, 0);
+		disk->header = (DiskHeader*) mmap(0, sizeof(DiskHeader) + num_blocks + num_blocks*BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, file_descriptor, 0);
 		disk->header->num_blocks = num_blocks;
 		disk->header->free_blocks = num_blocks;
 		
@@ -77,7 +77,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
 	
 	// security check on disk size
-	if(block_num >= disk->header->num_blocks) return -1;
+	if(block_num >= disk->header->num_blocks || block_num < 0) return -1;
 	
 	// check in the bitmap if block_num is free
 	if(BitMap_get(disk->map, block_num, 0) == block_num) return -1;
@@ -95,7 +95,7 @@ int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
 int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
 	
 	// security check on disk size
-	if(block_num >= disk->header->num_blocks) return -1;
+	if(block_num >= disk->header->num_blocks || block_num < 0) return -1;
 	
 	//security check on source size
 	if(strlen(src) * 8 > BLOCK_SIZE) return -1;
@@ -112,8 +112,7 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
 	if(DiskDriver_flush(disk) == -1) return -1;
 
 	// updates the first free block position in the disk header if changed
-	if(disk->header->first_free_block != block_num)
-		disk->header->first_free_block = DiskDriver_getFreeBlock(disk,0);		
+	disk->header->first_free_block = DiskDriver_getFreeBlock(disk,0);		
 
   return 0;	
 }
@@ -124,7 +123,7 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
 int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
 	
 	// security check on disk size
-	if(block_num >= disk->header->num_blocks) return -1;
+	if(block_num >= disk->header->num_blocks || block_num < 0) return -1;
 
 	// increases the number of free blocks in the disk header
 	if(DiskDriver_getFreeBlock(disk,block_num-1) != block_num) disk->header->free_blocks++;
@@ -146,14 +145,13 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 	
 	// security check on disk size
-	if(start >= disk->header->num_blocks) return -1;
+	if(start >= disk->header->num_blocks || start < 0) return -1;
 
 	// security check on disk->header initialization
-	if(disk->header->num_blocks <= 0 ) return -1;
+	if(disk->header->num_blocks <= 0) return -1;
 
 	// returns the position of the first free block in the disk
 	return BitMap_get(disk->map, start, 0);
-		
 }
 
 
@@ -161,8 +159,21 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 int DiskDriver_flush(DiskDriver* disk){
 	
 	// size of the memory to be synchronized
-	int mem_size = sizeof(DiskHeader) + (disk->header->num_blocks) + (disk->header->num_blocks*BLOCK_SIZE) ;
+	int mem_size = sizeof(DiskHeader) + (disk->header->num_blocks) + (disk->header->num_blocks*BLOCK_SIZE);
 
 	// synchronizes to mmap memory
 	return msync(disk->header, mem_size, MS_SYNC);
+}
+
+
+// frees disk driver resources
+int DiskDriver_destroy(DiskDriver* disk){
+	
+	// size of the memory to be freed
+	int mem_size = sizeof(DiskHeader) + (disk->header->num_blocks) + (disk->header->num_blocks*BLOCK_SIZE);
+	
+	ftruncate(disk->fd, mem_size);
+	free(disk->map);
+	free(disk);
+	return 0;
 }

@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+
 // "num" represents a block's position in memory
 // "num" will be converted in 2 values: bitmap entry index and offset inside the array
 BitMapEntryKey BitMap_blockToIndex(int num) {
@@ -15,8 +16,10 @@ BitMapEntryKey BitMap_blockToIndex(int num) {
 	return block_info;
 }
 
+
 // the bitmap entry key will be converted to an integer representing the block's position in memory
 int BitMap_indexToBlock(int entry, uint8_t bit_num) {
+	
 	return (entry*8) + bit_num;
 }
 
@@ -39,6 +42,7 @@ int BitMap_indexToBlock(int entry, uint8_t bit_num) {
 	
     return status;
  }
+
 
 // returns the index of the first bit having status "status" in the bitmap, and starts looking from position start
 int BitMap_get(BitMap* bitmap, int start, int status) {
@@ -67,4 +71,13 @@ int BitMap_get(BitMap* bitmap, int start, int status) {
 	
 	// error: index out of range bitmap->num_bits
 	return -1;
+}
+
+
+// frees bitmap resources
+int BitMap_destroy(BitMap* bitmap){
+
+	free(bitmap->entries);
+	free(bitmap);
+	return 0;
 }
