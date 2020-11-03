@@ -16,8 +16,8 @@ BitMapEntryKey BitMap_blockToIndex(int num) {
 }
 
 // the bitmap entry key will be converted to an integer representing the block's position in memory
-int BitMap_indexToBlock(BitMapEntryKey entry) {
-	return (entry.entry_num * 8) + entry.bit_num;
+int BitMap_indexToBlock(int entry, uint8_t bit_num) {
+	return (entry*8) + bit_num;
 }
 
 
@@ -61,7 +61,7 @@ int BitMap_get(BitMap* bitmap, int start, int status) {
 		if(status) {
 			if(res > 0) return idx;
 		}else{
-			if(res) return idx;
+			if(!res) return idx;
 		}
 	}
 	
