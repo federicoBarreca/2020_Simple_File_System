@@ -116,13 +116,17 @@ int main(int argc, char** argv) {
 		ret = DiskDriver_readBlock(disk, dest, block_num);
 		printf("Function returned %d, data = %s\n", ret, (char*)dest);
 
-		printf("\nWriting data in block: %d\n", -1);
+		printf("\nWriting data in block %d\n", -1);
 		ret = DiskDriver_writeBlock(disk, src, -1);
 		printf("Function returned %d, data not written in block %d\n", ret, -1);
 
-		printf("\nWriting data in block: %d\n", block_num+3);
+		printf("\nWriting data = prova in block %d\n", block_num+3);
 		ret = DiskDriver_writeBlock(disk, "prova", block_num+3);
 		printf("Function returned %d, data successfully written in block %d\n", ret, block_num+3);
+		
+		printf("\nRetrieving data from block %d\n", block_num+3);
+		ret = DiskDriver_readBlock(disk, dest, block_num+3);
+		printf("Function returned %d, data = %s\n", ret, (char*)dest);
   
 		//~ DiskDriver_getFreeBlock(DiskDriver* disk, int start)
 		//~ DiskDriver_freeBlock(DiskDriver* disk, int block_num)
@@ -140,17 +144,17 @@ int main(int argc, char** argv) {
 		
 		block_num = DiskDriver_getFreeBlock(disk, 0);
 		printf("\nCurrent first free block = %d\n", block_num);
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
+			
+		printf("\nMajor error checking\n");
+		ret = 0;
+		ret += DiskDriver_freeBlock(disk, block_num);                          //Tries freeing an empty block
+		ret += DiskDriver_freeBlock(disk, block_num+BLOCKS);                   //Tries freeing an out of range block
+		ret += DiskDriver_readBlock(disk, dest, block_num-1);                  //Tries reading an empty block
+		ret += DiskDriver_readBlock(disk, dest, block_num+BLOCKS);             //Tries reading from an out of range block
+		ret += DiskDriver_getFreeBlock(disk, block_num+BLOCKS);                //Tries retrieving a free block from out of range
+		ret += DiskDriver_writeBlock(disk, src, block_num);                    //Writing on a block for next test
+		ret += DiskDriver_writeBlock(disk, src, block_num);                    //Tries writing in a non free block
+		ret += DiskDriver_writeBlock(disk, src, block_num+BLOCKS);             //Tries writing in an out of range block
 		
 		printf("\nDestroying disk driver\n");
 		DiskDriver_destroy(disk);
