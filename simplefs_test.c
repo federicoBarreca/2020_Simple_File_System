@@ -120,8 +120,8 @@ int main(int argc, char** argv) {
 		ret = DiskDriver_writeBlock(disk, src, -1);
 		printf("Function returned %d, data not written in block %d\n", ret, -1);
 
-		printf("\nWriting data = prova in block %d\n", block_num+3);
-		ret = DiskDriver_writeBlock(disk, "prova", block_num+3);
+		printf("\nWriting data = paperino in block %d\n", block_num+3);
+		ret = DiskDriver_writeBlock(disk, "paperino", block_num+3);
 		printf("Function returned %d, data successfully written in block %d\n", ret, block_num+3);
 		
 		printf("\nRetrieving data from block %d\n", block_num+3);
