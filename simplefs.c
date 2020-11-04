@@ -33,14 +33,14 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 	directory_handle->sfs = fs;
 	
 	// retrieves fdb info from disk
-	FirstDirectoryBlock * first_directory_block = malloc(sizeof(FirstDirectoryBlock));
-	DiskDriver_readBlock(disk, first_directory_block, 0);
+	FirstDirectoryBlock * root = malloc(sizeof(FirstDirectoryBlock));
+	DiskDriver_readBlock(disk, root, 0);
 	
-	directory_handle->dcb = first_directory_block;
+	directory_handle->dcb = root;
 	directory_handle->directory = NULL;
 	directory_handle->current_block = &(directory_handle->dcb->header);
 	directory_handle->pos_in_dir = 0;
-	directory_handle->pos_in_block = first_directory_block->fcb.block_in_disk;
+	directory_handle->pos_in_block = root->fcb.block_in_disk;
 	
 	return directory_handle;
 }
@@ -69,27 +69,27 @@ void SimpleFS_format(SimpleFS* fs) {
 	//~ fs->disk->bitmap_data = bitmap.entries;
 	
 	// first block of the root directory allocation
-	FirstDirectoryBlock * first_directory_block = malloc(sizeof(FirstDirectoryBlock));
+	FirstDirectoryBlock * root = malloc(sizeof(FirstDirectoryBlock));
 
 	// initializes fdb's header
-	first_directory_block->header.previous_block = -1;
-	first_directory_block->header.next_block = -1;
-	first_directory_block->header.block_in_file = 0; 
+	root->header.previous_block = -1;
+	root->header.next_block = -1;
+	root->header.block_in_file = 0; 
 
 	// initializes fdb's file control block
-	first_directory_block->fcb.directory_block = -1;
-	first_directory_block->fcb.block_in_disk = fs->disk->header->first_free_block;
-	strcpy(first_directory_block->fcb.name,"/");
-	first_directory_block->fcb.size_in_bytes = sizeof(FirstDirectoryBlock);
-	first_directory_block->fcb.size_in_blocks = first_directory_block->fcb.size_in_bytes;
-	first_directory_block->fcb.is_dir = 1;
-	first_directory_block->num_entries = 0;
+	root->fcb.directory_block = -1;
+	root->fcb.block_in_disk = fs->disk->header->first_free_block;
+	strcpy(root->fcb.name,"/");
+	root->fcb.size_in_bytes = sizeof(FirstDirectoryBlock);
+	root->fcb.size_in_blocks = root->fcb.size_in_bytes;
+	root->fcb.is_dir = 1;
+	root->num_entries = 0;
 
 	// resets file_blocks
-	memset(first_directory_block->file_blocks, 0, sizeof(first_directory_block->file_blocks));
+	memset(root->file_blocks, 0, sizeof(root->file_blocks));
 
 	// writes first_directory_block in disk
-	DiskDriver_writeBlock(fs->disk, first_directory_block, fs->disk->header->first_free_block);
+	DiskDriver_writeBlock(fs->disk, root, fs->disk->header->first_free_block);
 	DiskDriver_flush(fs->disk);	
 
 	return;

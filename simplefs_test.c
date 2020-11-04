@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 #define BLOCKS 999
-#define TEST_PATH "test.txt"
+#define TEST_PATH "mydisk.txt"
 
 int main(int argc, char** argv) {
 	
