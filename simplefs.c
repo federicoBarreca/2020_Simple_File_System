@@ -94,3 +94,150 @@ void SimpleFS_format(SimpleFS* fs) {
 
 	return;
 }
+
+
+// creates an empty file in the directory d
+// returns null on error (file existing, no free blocks)
+// an empty file consists only of a block of type FirstBlock
+FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
+
+	// security check on input args
+	if(d == NULL || filename == NULL) return NULL;
+	
+	// security check on free blocks
+	if(d->sfs->disk->header->free_blocks == 0){
+		printf("\nThe disk is full\n");
+		return NULL; 
+	}
+	
+	// Se esiste già un file con lo stesso nome, restituisco errore
+	//~ if(SimpleFS_openFile(d, filename) != NULL) return NULL;
+
+	// file handle allocation
+	FileHandle * file_handle = malloc(sizeof(FileHandle));
+	file_handle->sfs = d->sfs;
+	
+	// first file block allocation and initialization
+	FirstFileBlock * ffb = malloc(sizeof(FirstFileBlock)); 
+	ffb->header.previous_block = -1;
+	ffb->header.next_block = -1;
+	ffb->header.block_in_file = 0;
+	ffb->fcb.directory_block = d->dcb->fcb.block_in_disk;
+	ffb->fcb.block_in_disk = DiskDriver_getFreeBlock(d->sfs->disk, 0);
+	strcpy(ffb->fcb.name, filename);
+	ffb->fcb.size_in_bytes = 0;
+	ffb->fcb.size_in_blocks = ffb->fcb.size_in_bytes;
+	ffb->fcb.is_dir = 0;
+	
+	file_handle->directory = d->dcb;
+	file_handle->current_block = &(ffb->header);
+	file_handle->pos_in_file = 0;
+	file_handle->fcb = ffb;
+
+	// resets file data with "end of line"
+	memset(ffb->data, '\0', sizeof(ffb->data));
+
+	// writes ffb in disk
+	DiskDriver_writeBlock(d->sfs->disk, ffb, ffb->fcb.block_in_disk);
+	DiskDriver_flush(d->sfs->disk);	
+
+	// checks if the directory is full
+	if(d->dcb->file_blocks[sizeof(d->dcb->file_blocks)-1] == 0){
+
+		// finds the first free index in file_blocks
+		int i;
+		for(i = 0; d->dcb->file_blocks[i] != 0; i++) {}
+
+		// updates directory control block info
+		d->dcb->file_blocks[i] = ffb->fcb.block_in_disk;	
+		d->dcb->num_entries++;
+
+		// update the new info in disk
+		DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.block_in_disk);
+		DiskDriver_flush(d->sfs->disk);
+
+	}else{
+		
+		DirectoryBlock* db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+		
+		// first directory block has a next directory block
+		if(d->dcb->header.next_block != -1){
+			
+			// looks for a free directory block or a to-be-created directory block
+			DiskDriver_readBlock(d->sfs->disk, db, d->dcb->header.next_block);
+			int curr_block = d->dcb->header.next_block;
+			while(db->file_blocks[sizeof(db->file_blocks)-1] != 0 && db->header.next_block != -1){
+				
+				curr_block = db->header.next_block;
+				DiskDriver_readBlock(d->sfs->disk, db, db->header.next_block);
+			}
+			
+			// directory block is free
+			if(db->file_blocks[sizeof(db->file_blocks)-1] == 0){
+				printf("\n\n\nSPAZIO LIBERO NEL BLOCCO N %d\n\n\n", curr_block);
+
+				// finds the first free index in file_blocks
+				int i;
+				for(i = 0; db->file_blocks[i] != 0; i++) {}
+
+				// updates directory control block info
+				db->file_blocks[i] = ffb->fcb.block_in_disk;	
+				d->dcb->num_entries++;
+
+				// update the new info in disk
+				DiskDriver_writeBlock(d->sfs->disk, db, curr_block);
+				DiskDriver_flush(d->sfs->disk);
+			}
+			
+			// next directory block doesn't exist
+			else if(db->header.next_block == -1){
+	printf("\n\n\nCREO UN NUOVO BLOCCO PERCHE IL BLOCCO N %d NON NE HA UNO SUCCESSIVO, POS NUOVO BLOCCO = %d\n\n\n", curr_block, d->sfs->disk->header->first_free_block);
+
+				// creates new directory block
+				int free_block = d->sfs->disk->header->first_free_block;
+				DirectoryBlock* new_db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+				new_db->header.block_in_file = db->header.block_in_file+1;
+				new_db->header.next_block = -1;
+				new_db->header.previous_block = curr_block;
+				
+				db->header.next_block = free_block;
+				DiskDriver_writeBlock(d->sfs->disk, db, curr_block);
+				
+				// updates directory control block info
+				db->file_blocks[0] = ffb->fcb.block_in_disk;	
+				d->dcb->num_entries++;
+
+				// update the new info in disk
+				DiskDriver_writeBlock(d->sfs->disk, new_db, free_block);
+				DiskDriver_flush(d->sfs->disk);
+				
+			}
+		}
+		else{
+			
+			printf("\n\n\nCREO UN NUOVO BLOCCO PERCHE IL PRIMO NON NE HA UN SUCCESSIVO, POS NUOVO BLOCCO = %d\n\n\n", d->sfs->disk->header->first_free_block);
+			
+			// creates new directory block
+			int free_block = d->sfs->disk->header->first_free_block;
+			DirectoryBlock* new_db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+			new_db->header.block_in_file = db->header.block_in_file+1;
+			new_db->header.next_block = -1;
+			new_db->header.previous_block = d->dcb->fcb.block_in_disk;
+				
+			d->dcb->header.next_block = free_block;
+			DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.block_in_disk);
+			
+			// updates directory control block info
+			db->file_blocks[0] = ffb->fcb.block_in_disk;	
+			d->dcb->num_entries++;
+
+			// update the new info in disk
+			DiskDriver_writeBlock(d->sfs->disk, new_db, free_block);
+			DiskDriver_flush(d->sfs->disk);
+		}
+			
+	}
+
+	DiskDriver_flush(d->sfs->disk);//aggiusta flush, open e controllo sullo spazio libero disco
+	return file_handle;
+}

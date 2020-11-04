@@ -1,6 +1,6 @@
 #include "bitmap.c"
 #include "disk_driver.c"
-#include "simplefs.h"
+#include "simplefs.c"
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h> 
@@ -163,6 +163,7 @@ int main(int argc, char** argv) {
 	//FILE SYSTEM TEST
 	else if(strcmp(test, "simplefs") == 0){
 		printf("SIMPLE FILE SYSTEM TEST\n");
+		
 		
 	}
 	else{
