@@ -33,7 +33,7 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 	directory_handle->sfs = fs;
 	
 	// retrieves fdb info from disk
-	FirstDirectoryBlock * root = malloc(sizeof(FirstDirectoryBlock));
+	FirstDirectoryBlock* root = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
 	DiskDriver_readBlock(disk, root, 0);
 	
 	directory_handle->dcb = root;
@@ -336,7 +336,7 @@ int SimpleFS_close(FileHandle* f) {
 }
 
 
-// checks if a directory already exists
+// checks if a directory already exists and returns the block index
 int SimpleFS_findDir(DirectoryHandle* d, const char* dirname){
 
 	// security check on input args
@@ -368,8 +368,9 @@ int SimpleFS_findDir(DirectoryHandle* d, const char* dirname){
 		
 		// compares the names of the files and checks if is not a directory
 		if(strcmp(ffb->fcb.name, dirname) == 0 && ffb->fcb.is_dir == 1){
+			int block = ffb->fcb.block_in_disk;
 			free(ffb);
-			return 0;
+			return block;
 		}
 	}
 	
@@ -392,7 +393,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 	}
 
 	// checks if directory dirname already exists
-	if(SimpleFS_findDir(d,dirname) == 0) return -1;
+	if(SimpleFS_findDir(d,dirname) != -1) return -1;
 
 	// first directory block allocation
 	FirstDirectoryBlock * fdb = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
@@ -510,5 +511,76 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 	DiskDriver_flush(d->sfs->disk);
 
 	return 0;
+}
+
+
+// seeks for a directory in d. If dirname is equal to ".." it goes one level up
+// 0 on success, negative value on error
+// it does side effect on the provided handle
+int SimpleFS_changeDir(DirectoryHandle* d, char* dirname) {
+
+	// security check on input args
+	if(d == NULL || dirname == NULL) return -1;
+
+	// back to the parent directory
+	if(strcmp(dirname,"..") == 0){
+		
+		//checks if parent is not the root
+		if(!d->directory){
+			
+			printf("\n\nYou are in the root\n\n");
+			return -1;
+		}
+		else{
+			
+			// retrieves parent directory's first directory block
+			FirstDirectoryBlock* parent = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+			DiskDriver_readBlock(d->sfs->disk, parent, d->directory->fcb.block_in_disk);
+			
+			//updates directory handle
+			free(d->dcb);
+			
+			d->dcb = parent;
+			d->current_block = &(parent->header);
+			d->pos_in_dir = 0;
+			d->pos_in_block = parent->fcb.block_in_disk;
+		
+			// checks if the parent of the parent is the root
+			if(parent->fcb.directory_block != -1){
+				
+				FirstDirectoryBlock* parent2 = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+				DiskDriver_readBlock(d->sfs->disk, parent2, parent->fcb.directory_block);
+			
+				d->directory = parent2;
+			}
+			else{
+				
+				d->directory = NULL;
+			}
+			
+			return 0;
+		}
+	}else{
+
+		int index = SimpleFS_findDir(d, dirname);
+
+		// checks if dirname exists
+	 	if(index != -1){
+			
+			FirstDirectoryBlock* child = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+			DiskDriver_readBlock(d->sfs->disk, child, index);
+			
+			d->directory = d->dcb;
+			d->dcb = child;
+			d->current_block = &(d->dcb->header);
+			d->pos_in_dir = 0;
+			d->pos_in_block = index;
+			return 0;
+		}else{
+			
+			printf("\n\nDirectory not found\n\n");
+			return -1;			
+		}	
+	}
 }
 

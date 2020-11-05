@@ -11,6 +11,7 @@
 #define BLOCKS 1000
 #define TEST_PATH "mydisk.txt"
 
+
 int main(int argc, char** argv) {
 	
 	if(argc < 2){
@@ -18,7 +19,7 @@ int main(int argc, char** argv) {
 		printf("\nUsage: ./simplefs_test.c <code>\n");
 		printf("\033[0m"); 
 		printf("\nIf you want to test the bitmap module's functions: code = bitmap\n");
-		printf("\nIf you want to test the disk driver module's functions: code = diskdriver\n");
+		printf("\nIf you want to test the disk driver module's functions: code = disk_driver\n");
 		printf("\nIf you want to test the file system: code = simplefs\n");
 		return 0;
 	}
@@ -81,7 +82,7 @@ int main(int argc, char** argv) {
 		
 	}
 	//DISK DRIVER TEST
-	else if(strcmp(test, "diskdriver") == 0){
+	else if(strcmp(test, "disk_driver") == 0){
 		printf("DISK DRIVER FUNCTIONS TEST\n");
 		
 		// DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks)
@@ -164,15 +165,14 @@ int main(int argc, char** argv) {
 	//FILE SYSTEM TEST
 	else if(strcmp(test, "simplefs") == 0){
 		printf("SIMPLE FILE SYSTEM TEST\n");
-		
-		
+	
 	}
 	else{
 		printf("\033[0;31m"); 
 		printf("\nUsage: ./simplefs_test.c <code>\n\n");
 		printf("\033[0m"); 
 		printf("If you want to test the bitmap module's functions: code = bitmap\n\n");
-		printf("If you want to test the disk driver module's functions: code = diskdriver\n\n");
+		printf("If you want to test the disk driver module's functions: code = disk_driver\n\n");
 		printf("If you want to test the file system: code = simplefs\n\n");
 		return 0;
 	}
