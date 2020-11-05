@@ -238,6 +238,6 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 			
 	}
 
-	DiskDriver_flush(d->sfs->disk);//aggiusta flush, open e controllo sullo spazio libero disco
+	DiskDriver_flush(d->sfs->disk);
 	return file_handle;
 }

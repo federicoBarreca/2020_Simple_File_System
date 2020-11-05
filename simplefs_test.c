@@ -157,6 +157,7 @@ int main(int argc, char** argv) {
 		ret += DiskDriver_writeBlock(disk, src, block_num+BLOCKS);             //Tries writing in an out of range block
 		
 		printf("\nDestroying disk driver\n");
+		free(dest);
 		DiskDriver_destroy(disk);
 		
 	}
