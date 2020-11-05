@@ -12,7 +12,7 @@
 DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 
 	// security check on fs and disk correct initialization
-	if(fs == NULL || disk == NULL) return NULL;
+	if(!fs || !disk) return NULL;
 
 	// sets "disk" as the first file system's disk
 	fs->disk = disk;
@@ -54,7 +54,7 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 void SimpleFS_format(SimpleFS* fs) {
 
 	// security check on fs correct initialization
-	if(fs == NULL) return;
+	if(!fs) return;
 
 	// bitmap reset
 	for(int i = 0; i < fs->disk->map->num_bits; i++) {
@@ -95,7 +95,7 @@ void SimpleFS_format(SimpleFS* fs) {
 FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 
 	// security check on input args
-	if(d == NULL || filename == NULL) return NULL;
+	if(!d || !filename) return NULL;
 	
 	// security check on free blocks
 	if(d->sfs->disk->header->free_blocks <= 1){
@@ -229,7 +229,6 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 		free(db);	
 	}
 	
-	
 	DiskDriver_flush(d->sfs->disk);
 	return file_handle;
 }
@@ -239,7 +238,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 int SimpleFS_readDir(char** names, DirectoryHandle* d) {
 
 	// security check on input args
-	if(names == NULL || d == NULL) return -1;
+	if(!names || !d) return -1;
 
 	FirstFileBlock * ffb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
 
@@ -277,7 +276,7 @@ int SimpleFS_readDir(char** names, DirectoryHandle* d) {
 FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
 
 	// security check on input args
-	if(d == NULL || filename == NULL) return NULL;
+	if(!d || !filename) return NULL;
 
 	// file handle allocation
 	FileHandle * file_handle = (FileHandle*) malloc(sizeof(FileHandle));
@@ -327,7 +326,7 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
 int SimpleFS_close(FileHandle* f) {
 
 	// security check
-	if(f == NULL) return -1;
+	if(!f) return -1;
 
 	free(f->directory);
 	free(f);
@@ -340,7 +339,7 @@ int SimpleFS_close(FileHandle* f) {
 int SimpleFS_findDir(DirectoryHandle* d, const char* dirname){
 
 	// security check on input args
-	if(d == NULL || dirname == NULL) return 0;
+	if(!d || !dirname) return 0;
 	
 	// first directory block pointer
 	FirstDirectoryBlock * db = d->dcb;
@@ -384,7 +383,7 @@ int SimpleFS_findDir(DirectoryHandle* d, const char* dirname){
 int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 
 	// security check on input args
-	if(d == NULL || dirname == NULL) return -1;
+	if(!d || !dirname) return -1;
 
 	// security check on free blocks
 	if(d->sfs->disk->header->free_blocks <= 1){
@@ -520,7 +519,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 int SimpleFS_changeDir(DirectoryHandle* d, char* dirname) {
 
 	// security check on input args
-	if(d == NULL || dirname == NULL) return -1;
+	if(!d || !dirname) return -1;
 
 	// back to the parent directory
 	if(strcmp(dirname,"..") == 0){
@@ -582,5 +581,96 @@ int SimpleFS_changeDir(DirectoryHandle* d, char* dirname) {
 			return -1;			
 		}	
 	}
+}
+
+
+// returns the number of bytes read (moving the current pointer to pos)
+// returns pos on success
+// -1 on error (file too short)
+int SimpleFS_seek(FileHandle* f, int pos) {
+
+	// security check on input args
+	if(!f || pos < 0) return -1;
+
+	// scans each block of the file
+	int weight = 0;
+	FirstFileBlock * ffb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
+	DiskDriver_readBlock(f->sfs->disk, ffb, f->fcb->fcb.block_in_disk);
+	
+	// computes the weight of the file
+	weight += sizeof(ffb->data);
+	if(ffb->header.next_block != -1) {
+		
+		FileBlock * file = (FileBlock*) malloc(sizeof(FileBlock));
+		DiskDriver_readBlock(f->sfs->disk, file, ffb->header.next_block);
+		
+		weight += sizeof(file->data);
+		while(file->header.next_block != -1) {
+			
+			DiskDriver_readBlock(f->sfs->disk, file, file->header.next_block);
+			weight += sizeof(file->data);
+		}
+		
+		
+		free(file);
+	}
+	free(ffb);
+	// file is too short
+	if(pos > weight){
+		
+		return -1;
+	}else{
+		
+		// updates the file current pointer
+		f->pos_in_file = pos;
+		return pos;
+	}
+
+}
+
+
+// reads in the file, at current position size bytes stored in data
+// returns the number of bytes read
+int SimpleFS_read(FileHandle* f, void* info, int size) {
+
+	// security check on input args
+	if(!f || !info || size < 0) return -1;
+
+	// initializes data
+	char* data = (char*) info;
+	memset(data, '\0', size);
+
+	// Memorizzo il primo blocco del file da leggere
+	FirstFileBlock * ffb = malloc(sizeof(FirstFileBlock));
+	DiskDriver_readBlock(f->sfs->disk, ffb, f->fcb->fcb.block_in_disk);
+	
+	// reads only the first block
+	if(size <= strlen(ffb->data)) {
+		
+		strcpy(data, ffb->data);
+	}else{
+		
+		strcpy(data, ffb->data);
+		
+		// scans each file block until data's size reaches size
+		FileBlock * file = (FileBlock*) malloc(sizeof(FileBlock));
+
+		int nb = f->fcb->header.next_block;
+		
+		while(strlen(data) < size && nb != -1) {
+			
+			DiskDriver_readBlock(f->sfs->disk, file, nb);
+			
+			// data += file->data
+			sprintf(data, "%s%s", data, file->data);
+			
+			nb = file->header.next_block;
+		}
+		free(file);
+	}
+	
+	free(ffb);
+	// returns using strlen because data is char*
+	return strlen(data);
 }
 
