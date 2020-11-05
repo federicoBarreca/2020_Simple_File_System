@@ -56,18 +56,10 @@ void SimpleFS_format(SimpleFS* fs) {
 	// security check on fs correct initialization
 	if(fs == NULL) return;
 
-	//~ BitMap* bmap = fs->disk->map;
-	
-	//~ bitmap.num_bits = fs->disk->header->bitmap_entries * 8;
-	//~ bitmap.entries = fs->disk->bitmap_data;
-
 	// bitmap reset
 	for(int i = 0; i < fs->disk->map->num_bits; i++) {
 		BitMap_set(fs->disk->map, i, 0);
 	}
-
-	// Memorizzo le entries della bitmap nel disk
-	//~ fs->disk->bitmap_data = bitmap.entries;
 	
 	// first block of the root directory allocation
 	FirstDirectoryBlock * root = malloc(sizeof(FirstDirectoryBlock));
@@ -175,7 +167,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 			
 			// directory block is free
 			if(db->file_blocks[sizeof(db->file_blocks)-1] == 0){
-				printf("\n\nThere's free space in directory block %d\n\n", curr_block);
+				//~ printf("\n\nThere's free space in directory block %d\n\n", curr_block);
 
 				// finds the first free index in file_blocks
 				int i;
@@ -249,8 +241,11 @@ int SimpleFS_readDir(char** names, DirectoryHandle* d) {
 	// security check on input args
 	if(names == NULL || d == NULL) return -1;
 
+	FirstFileBlock * ffb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
+
 	// first directory block pointer
-	FirstDirectoryBlock * db = d->dcb;
+	FirstDirectoryBlock * db = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+	db = d->dcb;
 
 	int i, dim_array = 0;
 	for(i = 0; i < d->dcb->num_entries; i++, dim_array++) {
@@ -267,13 +262,13 @@ int SimpleFS_readDir(char** names, DirectoryHandle* d) {
 		}
 
 		// retrieves the first file block in db->file_blocks[dim_array]
-		FirstFileBlock * ffb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
+		ffb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
 		DiskDriver_readBlock(d->sfs->disk, ffb, db->file_blocks[dim_array]);
 
 		names[dim_array] = ffb->fcb.name;
-		free(ffb);
+		
 	}
-	
+	free(ffb);
 	return 0;
 }
 
@@ -334,7 +329,6 @@ int SimpleFS_close(FileHandle* f) {
 	// security check
 	if(f == NULL) return -1;
 
-	free(f->fcb);
 	free(f->directory);
 	free(f);
 
@@ -512,6 +506,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 		free(db);	
 	}
 
+	free(fdb);
 	DiskDriver_flush(d->sfs->disk);
 
 	return 0;
