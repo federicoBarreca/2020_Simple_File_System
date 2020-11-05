@@ -45,6 +45,7 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 	return directory_handle;
 }
 
+
 // creates the initial structures, the top level directory
 // has name "/" and its control block is in the first position
 // it also clears the bitmap of occupied blocks on the disk
@@ -105,13 +106,13 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 	if(d == NULL || filename == NULL) return NULL;
 	
 	// security check on free blocks
-	if(d->sfs->disk->header->free_blocks == 0){
+	if(d->sfs->disk->header->free_blocks <= 1){
 		printf("\nThe disk is full\n");
 		return NULL; 
 	}
 	
-	// Se esiste già un file con lo stesso nome, restituisco errore
-	//~ if(SimpleFS_openFile(d, filename) != NULL) return NULL;
+	// checks if already exists a file named filename
+	if(SimpleFS_openFile(d, filename) != NULL) return NULL;
 
 	// file handle allocation
 	FileHandle * file_handle = malloc(sizeof(FileHandle));
@@ -139,10 +140,11 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 
 	// writes ffb in disk
 	DiskDriver_writeBlock(d->sfs->disk, ffb, ffb->fcb.block_in_disk);
-	DiskDriver_flush(d->sfs->disk);	
 
 	// checks if the directory is full
 	if(d->dcb->file_blocks[sizeof(d->dcb->file_blocks)-1] == 0){
+		
+		printf("\n\nThere's free space in first directory block\n\n");
 
 		// finds the first free index in file_blocks
 		int i;
@@ -154,8 +156,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 
 		// update the new info in disk
 		DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->fcb.block_in_disk);
-		DiskDriver_flush(d->sfs->disk);
-
+		
 	}else{
 		
 		DirectoryBlock* db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
@@ -174,7 +175,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 			
 			// directory block is free
 			if(db->file_blocks[sizeof(db->file_blocks)-1] == 0){
-				printf("\n\n\nSPAZIO LIBERO NEL BLOCCO N %d\n\n\n", curr_block);
+				printf("\n\nThere's free space in directory block %d\n\n", curr_block);
 
 				// finds the first free index in file_blocks
 				int i;
@@ -186,12 +187,11 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 
 				// update the new info in disk
 				DiskDriver_writeBlock(d->sfs->disk, db, curr_block);
-				DiskDriver_flush(d->sfs->disk);
 			}
 			
 			// next directory block doesn't exist
 			else if(db->header.next_block == -1){
-	printf("\n\n\nCREO UN NUOVO BLOCCO PERCHE IL BLOCCO N %d NON NE HA UNO SUCCESSIVO, POS NUOVO BLOCCO = %d\n\n\n", curr_block, d->sfs->disk->header->first_free_block);
+				printf("\n\nCreating a new directory block because %d is full and has no next block, next block position = %d\n\n", curr_block, d->sfs->disk->header->first_free_block);
 
 				// creates new directory block
 				int free_block = d->sfs->disk->header->first_free_block;
@@ -208,14 +208,12 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 				d->dcb->num_entries++;
 
 				// update the new info in disk
-				DiskDriver_writeBlock(d->sfs->disk, new_db, free_block);
-				DiskDriver_flush(d->sfs->disk);
-				
+				DiskDriver_writeBlock(d->sfs->disk, new_db, free_block);				
 			}
 		}
 		else{
 			
-			printf("\n\n\nCREO UN NUOVO BLOCCO PERCHE IL PRIMO NON NE HA UN SUCCESSIVO, POS NUOVO BLOCCO = %d\n\n\n", d->sfs->disk->header->first_free_block);
+			printf("\n\nCreating a new directory block because the first one is full and has no next block, next block position = %d\n\n", d->sfs->disk->header->first_free_block);
 			
 			// creates new directory block
 			int free_block = d->sfs->disk->header->first_free_block;
@@ -233,11 +231,61 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 
 			// update the new info in disk
 			DiskDriver_writeBlock(d->sfs->disk, new_db, free_block);
-			DiskDriver_flush(d->sfs->disk);
 		}
 			
 	}
 
 	DiskDriver_flush(d->sfs->disk);
 	return file_handle;
+}
+
+
+// opens a file in the directory d. The file should be exisiting
+FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
+
+	// security check on input args
+	if(d == NULL || filename == NULL) return NULL;
+
+	// file handle allocation
+	FileHandle * file_handle = malloc(sizeof(FileHandle));
+	
+	// first directory block pointer
+	FirstDirectoryBlock * db = malloc(sizeof(FirstDirectoryBlock));
+	db = d->dcb;
+
+	int i, dim_array = 0; 
+	for(i = 0; i < d->dcb->num_entries; i++, dim_array++){
+		
+		// if the entries array is finished
+		if(dim_array >= sizeof(db->file_blocks)){
+			
+			DirectoryBlock* db;
+			
+			// updates relative index
+			dim_array = dim_array - sizeof(db->file_blocks);
+			
+			// reads the next directory block
+			DiskDriver_readBlock(d->sfs->disk, db, db->header.next_block);
+		}
+		
+		// retrieves the first file block in db->file_blocks[dim_array]
+		FirstFileBlock * ffb = malloc(sizeof(FirstFileBlock));
+		DiskDriver_readBlock(d->sfs->disk, ffb, db->file_blocks[dim_array]);
+		
+		// compares the names of the files and checks if is not a directory
+		if(strcmp(ffb->fcb.name, filename) == 0 && ffb->fcb.is_dir == 0){
+
+			// initializes file_handle
+			file_handle->sfs = d->sfs;
+			file_handle->fcb = ffb;
+			file_handle->directory = d->dcb;
+			file_handle->current_block = &(ffb->header);
+			file_handle->pos_in_file = 0;
+
+			
+			return file_handle;
+		}
+	}
+
+	return NULL;
 }
