@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#define BLOCKS 999
+#define BLOCKS 1000
 #define TEST_PATH "mydisk.txt"
 
 int main(int argc, char** argv) {
