@@ -590,7 +590,7 @@ int SimpleFS_changeDir(DirectoryHandle* d, char* dirname) {
 int SimpleFS_seek(FileHandle* f, int pos) {
 
 	// security check on input args
-	if(!f || pos < 0) return -1;
+	if(!f || pos < 0 || pos > f->fcb->fcb.size_in_bytes) return -1;
 
 	// scans each block of the file
 	int weight = 0;
@@ -634,7 +634,7 @@ int SimpleFS_seek(FileHandle* f, int pos) {
 int SimpleFS_read(FileHandle* f, void* info, int size) {
 
 	// security check on input args
-	if(!f || !info || size < 0) return -1;
+	if(!f || !info || f->pos_in_file > f->fcb->fcb.size_in_bytes || size < 0) return -1;
 
 	// initializes data
 	char* data = (char*) info;
@@ -706,7 +706,7 @@ int SimpleFS_addFileBlock(DiskDriver* disk, FileBlock* new_file_block, FileBlock
 int SimpleFS_write(FileHandle* f, void* data, int size) {
 
 	// security check on input args
-	if(!f || !data || size < 0) return -1;
+	if(!f || !data || f->pos_in_file > f->fcb->fcb.size_in_bytes || size < 0 ) return -1;
 
 	// bytes written to be returned and blocks written counter
 	int bytes_w = 0, blocks_w = 0;
