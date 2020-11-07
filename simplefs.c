@@ -98,7 +98,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 	if(!d || !filename) return NULL;
 	
 	// security check on free blocks
-	if(d->sfs->disk->header->free_blocks <= 1){
+	if(d->sfs->disk->header->free_blocks <= 2){
 		printf("\nThe disk is full\n");
 		return NULL; 
 	}
@@ -136,7 +136,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 	// checks if the directory is full
 	if(d->dcb->file_blocks[sizeof(d->dcb->file_blocks)-1] == 0){
 		
-		printf("\n\nThere's free space in first directory block\n\n");
+		//~ printf("\n\nThere's free space in first directory block\n\n");
 
 		// finds the first free index in file_blocks
 		int i;
@@ -183,7 +183,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 			
 			// next directory block doesn't exist
 			else if(db->header.next_block == -1){
-				printf("\n\nCreating a new directory block because %d is full and has no next block, next block position = %d\n\n", curr_block, d->sfs->disk->header->first_free_block);
+				//~ printf("\n\nCreating a new directory block because %d is full and has no next block, next block position = %d\n\n", curr_block, d->sfs->disk->header->first_free_block);
 
 				// creates new directory block
 				int free_block = d->sfs->disk->header->first_free_block;
@@ -206,7 +206,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 		}
 		else{
 			
-			printf("\n\nCreating a new directory block because the first one is full and has no next block, next block position = %d\n\n", d->sfs->disk->header->first_free_block);
+			//~ printf("\n\nCreating a new directory block because the first one is full and has no next block, next block position = %d\n\n", d->sfs->disk->header->first_free_block);
 			
 			// creates new directory block
 			int free_block = d->sfs->disk->header->first_free_block;
@@ -327,8 +327,7 @@ int SimpleFS_close(FileHandle* f) {
 
 	// security check
 	if(!f) return -1;
-
-	free(f->directory);
+	free(f->fcb);
 	free(f);
 
 	return 0;
@@ -693,7 +692,7 @@ int SimpleFS_addFileBlock(DiskDriver* disk, FileBlock* new_file_block, FileBlock
 	
 	parent->header.next_block = disk->header->first_free_block;
 	
-	// writes new block on disk
+	// writes the new block and updates the previous on disk
 	DiskDriver_writeBlock(disk, parent, new_file_block->header.previous_block);
 	DiskDriver_writeBlock(disk, new_file_block, disk->header->first_free_block);
 	DiskDriver_flush(disk);
@@ -717,6 +716,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 	// updates the current position in data
 	f->pos_in_file = (int) (f->pos_in_file + size);
 	
+	// counter of memory read from the first file block
 	int ctr = sizeof(f->fcb->data);
 	
 	// if fits in the first file block
@@ -730,26 +730,35 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 	//if starts from ffb
 	else if(pos < ctr){
 		
-		// writes all data starting from pos
+		// fills the ffb 
 		memcpy(f->fcb->data+pos, data, ctr-pos);
 		bytes_w += ctr-pos;
 		blocks_w = 1;
 		
 		FileBlock* file_block = (FileBlock*) malloc(sizeof(FileBlock));
 		
+		// if next block exists reads it
 		if(DiskDriver_readBlock(f->sfs->disk, file_block, f->current_block->next_block) != -1){}
+		// if not creates it
 		else{
+			
+			// adds a new file block linked to the first one
 			f->current_block->next_block = f->sfs->disk->header->first_free_block;
 			file_block->header.next_block = -1;
 			file_block->header.previous_block = f->fcb->fcb.block_in_disk;
 			file_block->header.block_in_file = f->current_block->block_in_file+1;
+			
+			// updates the first one on disk
+			DiskDriver_writeBlock(f->sfs->disk, f->fcb, f->fcb->fcb.block_in_disk);
 		}
-		// writes data
+		
+		// if fits entirely in the block writes all data
 		if((size - bytes_w) < sizeof(file_block->data)){
 					
 			memcpy(file_block->data, data+bytes_w, (size - bytes_w));
 			bytes_w += (size - bytes_w);
 		}
+		// or fills the current block
 		else{
 					
 			memcpy(file_block->data, data+bytes_w, sizeof(file_block->data) - (size - bytes_w));
@@ -757,8 +766,8 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 		}
 				
 		blocks_w++;
+		// writes the new block if just created on disk, or updates it
 		DiskDriver_writeBlock(f->sfs->disk, file_block, f->current_block->next_block);
-		DiskDriver_writeBlock(f->sfs->disk, f->fcb, f->fcb->fcb.block_in_disk);
 		
 		FileBlock * prev_block = (FileBlock*) malloc(sizeof(FileBlock));
 		DiskDriver_readBlock(f->sfs->disk, prev_block, f->fcb->fcb.block_in_disk);
@@ -768,6 +777,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 					
 			// if next block exists reads it				
 			if(DiskDriver_readBlock(f->sfs->disk, file_block, file_block->header.next_block) != -1){}
+			// if not creates it
 			else{
 					
 				file_block = (FileBlock*) malloc(sizeof(FileBlock));
@@ -777,12 +787,13 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 					
 			DiskDriver_readBlock(f->sfs->disk, prev_block, prev_block->header.next_block);
 					
-			// writes data
+			// if fits entirely in the block writes all data
 			if((size - bytes_w) < sizeof(file_block->data)){
 					
 				memcpy(file_block->data, data+bytes_w, (size - bytes_w));
 				bytes_w += (size - bytes_w);
 			}
+			// or fills the current block
 			else{
 					
 				memcpy(file_block->data, data+bytes_w, sizeof(file_block->data) - (size - bytes_w));
@@ -806,7 +817,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 		FileBlock * prev_block = (FileBlock*) malloc(sizeof(FileBlock));
 		DiskDriver_readBlock(f->sfs->disk, prev_block, f->fcb->fcb.block_in_disk);
 			
-		// scans blocks until finds pos
+		// scans blocks until finds block containing pos
 		while(pos > ctr){
 			DiskDriver_readBlock(f->sfs->disk, prev_block, prev_block->header.next_block);
 				
@@ -814,12 +825,14 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 			ctr += sizeof(file_block->data);		
 		}
 		
-		int new_pos = pos-(ctr-sizeof(file_block->data));
+		// computes the offset of the cursor in the current block
+		int offset = pos-(ctr-sizeof(file_block->data));
 				
-		if(size + new_pos < sizeof(file_block->data)){
+		// if fits entirely in the current block		
+		if(size + offset < sizeof(file_block->data)){
 		
-			// writes all data starting from pos
-			memcpy(file_block->data+new_pos, data, size);
+			// writes all data starting from offset
+			memcpy(file_block->data+offset, data, size);
 			bytes_w = size;
 			blocks_w = 1;
 			
@@ -827,8 +840,10 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 		}
 		else{
 				
-			memcpy(file_block->data+new_pos, file_block, sizeof(file_block->data)-new_pos);
-			bytes_w = sizeof(file_block->data)-new_pos;
+			// fills the current block	
+			memcpy(file_block->data+offset, file_block, sizeof(file_block->data)-offset);
+			
+			bytes_w = sizeof(file_block->data)-offset;
 			blocks_w++;
 			DiskDriver_writeBlock(f->sfs->disk, file_block, prev_block->header.next_block);	
 			
@@ -837,6 +852,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 					
 				// if next block exists reads it				
 				if(DiskDriver_readBlock(f->sfs->disk, file_block, file_block->header.next_block) != -1){}
+				// if not creates it
 				else{
 					
 					file_block = (FileBlock*) malloc(sizeof(FileBlock));
@@ -845,12 +861,13 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 					
 				DiskDriver_readBlock(f->sfs->disk, prev_block, prev_block->header.next_block);
 					
-				// writes data
+				// if fits entirely in the block writes all data
 				if((size - bytes_w) < sizeof(file_block->data)){
 					
 					memcpy(file_block->data, data+bytes_w, (size - bytes_w));
 					bytes_w += (size - bytes_w);
 				}
+				// or fills the current block
 				else{
 					
 					memcpy(file_block->data, data+bytes_w, sizeof(file_block->data) - (size - bytes_w));
@@ -874,4 +891,72 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 	DiskDriver_flush(f->sfs->disk);
 	
 	return bytes_w;
+}
+
+
+// frees each block after the first file block(if file) or first directory block(if directory)
+void SimpleFS_free_file_dir(DiskDriver* disk, FileBlock* file_block, DirectoryBlock* dir_block, int next_block){
+	if(file_block && next_block != -1){
+		
+		DiskDriver_readBlock(disk, file_block, next_block);
+		DiskDriver_freeBlock(disk, next_block);
+		SimpleFS_free_file_dir(disk, file_block, dir_block, file_block->header.next_block);
+	}
+	else if(dir_block && next_block != -1){
+		
+		DiskDriver_readBlock(disk, dir_block, next_block);
+		DiskDriver_freeBlock(disk, next_block);
+		SimpleFS_free_file_dir(disk, file_block, dir_block, dir_block->header.next_block);
+	}
+	else{
+		return;
+	}
+	
+}
+
+
+//
+int SimpleFS_remove_aux(DirectoryHandle* d, FileHandle* f, char* filename){
+	
+	if(SimpleFS_changeDir(d, filename) != -1){
+		
+		char** files = (char**) malloc(sizeof(char*)); 
+		SimpleFS_readDir(files, d);
+		for(int i = 0; i < d->dcb->num_entries; i++){
+			SimpleFS_remove_aux(d, f, files[i]);
+		}
+		DirectoryBlock* db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+		SimpleFS_free_file_dir(d->sfs->disk, NULL, db, d->current_block->next_block);
+		DiskDriver_freeBlock(d->sfs->disk, d->dcb->fcb.block_in_disk);
+
+	}
+	else{
+		f = SimpleFS_openFile(d, filename);
+		if(!f) return -1;
+		
+		d->dcb->num_entries--;
+		
+		FileBlock* fb = (FileBlock*) malloc(sizeof(FileBlock));
+		SimpleFS_free_file_dir(f->sfs->disk, fb, NULL, f->current_block->next_block);
+		DiskDriver_freeBlock(f->sfs->disk, f->fcb->fcb.block_in_disk);
+		free(fb);
+		
+	}
+	return 0;
+	
+}
+
+
+// removes the file in the current directory
+// returns -1 on failure 0 on success
+// if a directory, it removes recursively all contained files
+int SimpleFS_remove(DirectoryHandle* d, char* filename) {
+
+	// security check on input args
+	if(!d || !filename) return -1;
+	
+	FileHandle* f = (FileHandle*) malloc(sizeof(FileHandle));
+	int ret = SimpleFS_remove_aux(d, f, filename);
+	free(f);
+	return ret;
 }
