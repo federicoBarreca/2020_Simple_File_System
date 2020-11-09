@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
 		ret += DiskDriver_writeBlock(disk, src, block_num);                    //Tries writing in a non free block
 		ret += DiskDriver_writeBlock(disk, src, block_num+BLOCKS);             //Tries writing in an out of range block
 		
-		printf("\nDestroying disk driver\n");
+		printf("\nClosing disk driver\n");
 		free(dest);
 		DiskDriver_destroy(disk);
 		
@@ -253,7 +253,7 @@ int main(int argc, char** argv) {
 		printf("changing to \"pluto\" ret=> %d", SimpleFS_changeDir(directory_handle, "pluto"));
 		printf(", now in %s \n", directory_handle->dcb->fcb.name);
 		
-		printf("Currently in dir = %s, ", directory_handle->dcb->fcb.name);
+		printf("Currently in dir %s, ", directory_handle->dcb->fcb.name);
 		printf("changing to \"..\" ret=> %d", SimpleFS_changeDir(directory_handle, ".."));
 		printf(", now in %s \n", directory_handle->dcb->fcb.name);
 		
@@ -284,7 +284,19 @@ int main(int argc, char** argv) {
 		ret = SimpleFS_write(fl, " INSERT ", strlen(" INSERT "));
 		SimpleFS_read(fl, (void*)data, size);
 		printf("%s now contains:\n%s\n", fl->fcb->fcb.name, data);
-
+		
+		
+		
+		
+		
+		printf("\nClosing %s\n", fl->fcb->fcb.name);
+		printf("Closing %s\n", directory_handle->dcb->fcb.name);
+		printf("Closing disk driver\n");
+		printf("Closing simple file system\n");
+		SimpleFS_close(fl);
+		free(directory_handle);
+		DiskDriver_destroy(disk);
+		free(fs);
 	}
 	else{
 		printf("\033[0;31m"); 
