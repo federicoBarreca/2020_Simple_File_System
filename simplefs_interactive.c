@@ -114,11 +114,10 @@ int main(int argc, char** argv) {
 				printf("\nFile not found\n");
 			}
 			else{
-				char* content = "";
+				char string[125];
 				printf("\nWhat do you want to write?\n");
-				scanf("%s", content);
-				strcpy(content, content);
-				ret = SimpleFS_write(fl, content, strlen(content));
+				scanf("%s", string);
+				ret = SimpleFS_write(fl, string, strlen(string));
 				if(ret != -1)
 					printf("File written successfully\n");
 				else
@@ -130,26 +129,32 @@ int main(int argc, char** argv) {
 			printf("\nWhat do you want to read?\n");
 			scanf("%s", quest);
 			fl = SimpleFS_openFile(directory_handle, quest);
-			char* content = " ";
-			int size = fl->fcb->fcb.size_in_bytes;
-			ret = SimpleFS_read(fl, (void*)content, size);
-			if(ret != -1)
-				printf("File read successfully:\n%s\n", content);
+			if(fl){
+				char* content[125];
+				int size = fl->fcb->fcb.size_in_bytes;
+				ret = SimpleFS_read(fl, (void*)content, size);
+				if(ret != -1)
+					printf("File read successfully:\n%s\n", (char*)content);
+				else
+					printf("File write error\n");
+			}
 			else
-				printf("File write error\n");
-			
+				printf("\nFile not found\n");
 		}
 		else if(strcmp(quest, "seek") == 0){
 			printf("\nWhich file do you want to open?\n");
 			scanf("%s", quest);
 			fl = SimpleFS_openFile(directory_handle, quest);
 			if(fl){
-				char* content = " ";
+				char content[125];
 				printf("\nWhere do you want to move the cursor?\n");
 				scanf("%s", content);
 				int pos = atoi(content);
 				ret = SimpleFS_seek(fl, pos);
-				printf("Cursor moved successfully\n");
+				if(ret != -1)
+					printf("Cursor moved successfully\n");
+				else
+					printf("Cursor moving error\n");
 			}
 			else
 				printf("%s opening error\n", quest);
