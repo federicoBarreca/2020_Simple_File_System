@@ -4,7 +4,7 @@ CC=gcc
 AR=ar
 
 
-BINS= simplefs_test
+BINS= simplefs_test simplefs_interactive
 
 OBJS = bitmap.o disk_driver.o file_system.o
 
@@ -20,7 +20,7 @@ HEADERS=bitmap.h\
 
 all:	$(BINS) 
 
-so_game: simplefs_test.c $(OBJS) 
+so_game: simplefs_test.c simplefs_interactive.c $(OBJS) 
 	$(CC) $(CCOPTS)  -o $@ $^ $(LIBS)
 
 clean:

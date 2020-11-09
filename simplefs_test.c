@@ -129,8 +129,8 @@ int main(int argc, char** argv) {
 		ret = DiskDriver_readBlock(disk, dest, block_num+3);
 		printf("Function returned %d, data = %s\n", ret, (char*)dest);
   
-		//~ DiskDriver_getFreeBlock(DiskDriver* disk, int start)
-		//~ DiskDriver_freeBlock(DiskDriver* disk, int block_num)
+		// DiskDriver_getFreeBlock(DiskDriver* disk, int start)
+		// DiskDriver_freeBlock(DiskDriver* disk, int block_num)
 		printf("\n*** Testing DiskDriver_getFreeBlock(DiskDriver* disk, int start) ***\n");
 		printf("\n*** Testing DiskDriver_freeBlock(DiskDriver* disk, int block_num) ***\n");
 		
@@ -188,7 +188,6 @@ int main(int argc, char** argv) {
 		FileHandle* fl = (FileHandle*) malloc(sizeof(FileHandle));
 		char filename[125];
 		for(i = 0; i < num_file; i++) {
-			
 			sprintf(filename, "file_%d.txt", directory_handle->dcb->num_entries);
 			fl = SimpleFS_createFile(directory_handle,filename);
 			if(fl) {
@@ -222,7 +221,7 @@ int main(int argc, char** argv) {
 		}		
 
 	 	// SimpleFS_mkDir(DirectoryHandle* d, char* dirname)
-		printf("\n*** SimpleFS_mkDir(DirectoryHandle* d, char* dirname) ***\n");
+		printf("\n*** Testing SimpleFS_mkDir(DirectoryHandle* d, char* dirname) ***\n");
 		printf("Trying to make dir pluto in dir %s\n", directory_handle->dcb->fcb.name);
 		ret = SimpleFS_mkDir(directory_handle, "pluto");
 		if(ret == 0) {
@@ -232,7 +231,7 @@ int main(int argc, char** argv) {
 		}
 
 	 	// SimpleFS_readDir(char** names, DirectoryHandle* d)
-		printf("\n*** SimpleFS_readDir(char** names, DirectoryHandle* d) ***\n");
+		printf("\n*** Testing SimpleFS_readDir(char** names, DirectoryHandle* d) ***\n");
 		printf("Number elements in dir %s = %d\n" ,  directory_handle->dcb->fcb.name, directory_handle->dcb->num_entries);
 		char ** list = (char**) malloc(sizeof(char*)*directory_handle->dcb->num_entries);
 		for(i = 0; i < directory_handle->dcb->num_entries; i++) {
@@ -244,7 +243,7 @@ int main(int argc, char** argv) {
 		}
 		
 		// SimpleFS_changeDir(DirectoryHandle* d, char* dirname)
-		printf("\n*** SimpleFS_changeDir(DirectoryHandle* d, char* dirname) ***\n");
+		printf("\n*** Testing SimpleFS_changeDir(DirectoryHandle* d, char* dirname) ***\n");
 		printf("Currently in dir %s, ", directory_handle->dcb->fcb.name);
 		printf("changing to \"..\" ret=> %d", SimpleFS_changeDir(directory_handle, ".."));
 		printf(", now in %s \n", directory_handle->dcb->fcb.name);
@@ -262,7 +261,7 @@ int main(int argc, char** argv) {
 		printf(", now in %s \n", directory_handle->dcb->fcb.name);
 		
 		// SimpleFS_write(FileHandle* f, void* data, int size)
-		printf("\n*** SimpleFS_write(FileHandle* f, void* data, int size) ***\n");
+		printf("\n*** Testing SimpleFS_write(FileHandle* f, void* data, int size) ***\n");
 		char* string = "Sora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofyAO";
 		printf("Writing in %s:\n%s\n", fl->fcb->fcb.name, string);
 		ret = SimpleFS_write(fl, string, strlen(string));
@@ -273,8 +272,8 @@ int main(int argc, char** argv) {
 		
 		// SimpleFS_read(FileHandle* f, void* data, int size)
 		// SimpleFS_seek(FileHandle* f, int pos)
-		printf("\n*** SimpleFS_read(FileHandle* f, void* data, int size) ***\n");
-		printf("*** SimpleFS_seek(FileHandle* f, int pos) ***\n");
+		printf("\n*** Testing SimpleFS_read(FileHandle* f, void* data, int size) ***\n");
+		printf("*** Testing SimpleFS_seek(FileHandle* f, int pos) ***\n");
 		int size = fl->fcb->fcb.size_in_bytes;
 		char data[size];
 		SimpleFS_read(fl, (void*)data, size);
@@ -282,17 +281,71 @@ int main(int argc, char** argv) {
 		printf("\nChanging the file cursor to 80 and writing INSERT in the file\n");
 		ret = SimpleFS_seek(fl, 80);
 		ret = SimpleFS_write(fl, " INSERT ", strlen(" INSERT "));
+		size = fl->fcb->fcb.size_in_bytes;
 		SimpleFS_read(fl, (void*)data, size);
 		printf("%s now contains:\n%s\n", fl->fcb->fcb.name, data);
+
+		// SimpleFS_remove(DirectoryHandle* d, char* filename)
+		printf("\n*** Testing SimpleFS_remove(DirectoryHandle* d, char* filename) ***\n");
+		printf("\nCurrently in dir %s, ", directory_handle->dcb->fcb.name);
+		printf("changing to \"pluto\" ret=> %d", SimpleFS_changeDir(directory_handle, "pluto"));
+		printf(", now in %s \n", directory_handle->dcb->fcb.name);
 		
+		printf("\nPopulating dir pluto with a directory and a file\n");
+		printf("Trying to make dir sora in dir %s\n", directory_handle->dcb->fcb.name);
+		ret = SimpleFS_mkDir(directory_handle, "sora");
+		if(ret == 0) {
+			printf("Directory created successfully\n");
+		}else{
+			printf("Directory creation error\n");
+		}
+		strcpy(filename, "prova_x.txt");
+		fl = SimpleFS_createFile(directory_handle,filename);
+		if(fl){
+			printf("%s created successfully in dir %s\n", filename, directory_handle->dcb->fcb.name);
+		}
+		else{
+			printf("%s creation error\n", filename);
+		}
 		
+		printf("\nCurrently in dir %s, ", directory_handle->dcb->fcb.name);
+		printf("changing to \"..\" ret=> %d", SimpleFS_changeDir(directory_handle, ".."));
+		printf(", now in %s \n", directory_handle->dcb->fcb.name);
 		
+		printf("\nInside %s:\n", directory_handle->dcb->fcb.name);
+		list = (char**) malloc(sizeof(char*)*directory_handle->dcb->num_entries);
+		for(i = 0; i < directory_handle->dcb->num_entries; i++) {
+			list[i] = (char*) malloc(125);
+		}
+		SimpleFS_readDir(list, directory_handle);
+		for(i = 0; i < directory_handle->dcb->num_entries; i++) {
+			printf(" - > %s\n", list[i]);
+		}
 		
+		strcpy(filename, "pluto");
+		printf("\nTrying to remove dir %s from dir %s\n", filename, directory_handle->dcb->fcb.name);
+		ret = SimpleFS_remove(directory_handle, filename);
+		if(ret >= 0) {
+			printf("\nFile deleted successfully\n");
+		}else{
+			printf("\nFile deletion error\n");
+		}
+		
+		printf("\nAfter deletion inside %s:\n", directory_handle->dcb->fcb.name);
+		list = (char**) malloc(sizeof(char*)*directory_handle->dcb->num_entries);
+		for(i = 0; i < directory_handle->dcb->num_entries; i++) {
+			list[i] = (char*) malloc(125);
+		}
+		SimpleFS_readDir(list, directory_handle);
+		for(i = 0; i < directory_handle->dcb->num_entries; i++) {
+			printf(" - > %s\n", list[i]);
+		}
 		
 		printf("\nClosing %s\n", fl->fcb->fcb.name);
 		printf("Closing %s\n", directory_handle->dcb->fcb.name);
 		printf("Closing disk driver\n");
 		printf("Closing simple file system\n");
+		free(list);
 		SimpleFS_close(fl);
 		free(directory_handle);
 		DiskDriver_destroy(disk);
@@ -307,14 +360,5 @@ int main(int argc, char** argv) {
 		printf("If you want to test the file system: code = simplefs\n\n");
 		return 0;
 	}
-	
-	
-	
-	
-	
-  //~ printf("FirstBlock size %ld\n", sizeof(FirstFileBlock));
-  //~ printf("DataBlock size %ld\n", sizeof(FileBlock));
-  //~ printf("FirstDirectoryBlock size %ld\n", sizeof(FirstDirectoryBlock));
-  //~ printf("DirectoryBlock size %ld\n", sizeof(DirectoryBlock));
   
 }
