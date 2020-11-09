@@ -35,13 +35,13 @@ int main(int argc, char** argv) {
 		printf("\n*** Testing BitMap_blockToIndex(%d) ***\n", pos);   
 		BitMapEntryKey block_info = BitMap_blockToIndex(pos);
 		printf("\nBlock position = %d has been converted to entry number = %d, bit offset = %d\n", pos, block_info.entry_num, block_info.bit_num);
-		printf("{Expected: 124, 7}\n");
+		printf("{Expected: 125, 0}\n");
 	 
 		// BitMap_indexToBlock(int entry, uint8_t bit_num)
 		printf("\n*** Testing BitMap_indexToBlock(%d, %d) ***\n", block_info.entry_num, block_info.bit_num);
 		pos = BitMap_indexToBlock(block_info.entry_num, block_info.bit_num); 
 		printf("\nBitmap entry key (%d, %d) has been converted to block position = %d\n", block_info.entry_num, block_info.bit_num, pos);
-		printf("{Expected: 999}\n");
+		printf("{Expected: 1000}\n");
 
 		// BitMap_get(BitMap* bmap, int start, int status)
 		// BitMap_set(BitMap* bmap, int pos, int status)
