@@ -262,7 +262,7 @@ int main(int argc, char** argv) {
 		
 		// SimpleFS_write(FileHandle* f, void* data, int size)
 		printf("\n*** Testing SimpleFS_write(FileHandle* f, void* data, int size) ***\n");
-		char* string = "Sora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofyAO";
+		char* string = "Restate fermi, restate fermi… Figli di Gondor, di Rohan, fratelli miei! Vedo nei vostri occhi la stessa paura che potrebbe afferrare il mio cuore. Ci sarà un giorno in cui il coraggio degli uomini cederà, in cui abbandoneremo gli amici e spezzeremo ogni legame di fratellanza, ma non è questo il giorno! Ci sarà l’ora dei lupi e degli scudi frantumati quando l’era degli uomini arriverà al crollo, ma non è questo il giorno! Quest’oggi combattiamo… Per tutto ciò che ritenete caro su questa bella Terra, vi invito a resistere! Uomini dell’ovest!";
 		printf("Writing in %s:\n%s\n", fl->fcb->fcb.name, string);
 		ret = SimpleFS_write(fl, string, strlen(string));
 		printf("\nLength of the string = %ld\n", strlen(string));
