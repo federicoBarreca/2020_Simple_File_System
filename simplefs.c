@@ -526,13 +526,14 @@ int SimpleFS_changeDir(DirectoryHandle* d, char* dirname) {
 		//checks if parent is not the root
 		if(!d->directory){
 			
-			printf("\n\nYou are in the root\n\n");
+			printf("you are in the root, ");
 			return -1;
 		}
 		else{
 			
 			free(d->dcb);
 			
+			//updates directory handle
 			d->dcb = d->directory;
 			d->current_block = &(d->dcb->header);
 			d->pos_in_dir = 0;
@@ -561,7 +562,8 @@ int SimpleFS_changeDir(DirectoryHandle* d, char* dirname) {
 			DiskDriver_readBlock(d->sfs->disk, child, index);
 			
 			free(d->directory);
-			
+			 
+			//updates directory handle
 			d->directory = d->dcb;
 			d->dcb = child;
 			d->current_block = &(d->dcb->header);
@@ -602,7 +604,6 @@ int SimpleFS_seek(FileHandle* f, int pos) {
 			DiskDriver_readBlock(f->sfs->disk, file, file->header.next_block);
 			weight += sizeof(file->data);
 		}
-		
 		
 		free(file);
 	}
@@ -889,6 +890,8 @@ int SimpleFS_write(FileHandle* f, void* data, int size) {
 
 // frees each block after the first file block(if file) or first directory block(if directory)
 void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f, int isDir){
+	
+	// if deletes a directory
 	if(isDir){
 		
 		// first directory block pointer
@@ -920,13 +923,6 @@ void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f,
 					dim_array++;
 				}
 				db->file_blocks[dim_array] = 0;
-				//~ // fixes positions inside the array
-				//~ int* ptr = db->file_blocks+dim_array;
-				//~ while(*(ptr+1)){
-					//~ *ptr = *(ptr+1);
-					//~ ptr++;
-				//~ }
-				//~ *ptr = 0;
 				
 				DiskDriver_writeBlock(disk, db, curr_block);
 				break;
@@ -935,6 +931,7 @@ void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f,
 		}
 		
 		d->directory->num_entries--;
+		
 		// updates d->directory->num_entries in disk
 		DiskDriver_writeBlock(disk, d->directory, d->directory->fcb.block_in_disk);
 		
@@ -942,6 +939,7 @@ void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f,
 
 		int next_block = d->dcb->header.next_block;
 		
+		// frees every block of the directory
 		while(next_block != -1) {
 			DiskDriver_readBlock(d->sfs->disk, dir, next_block);
 			
@@ -956,6 +954,7 @@ void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f,
 		free(dir);
 		
 	}
+	// if deletes a file
 	else{
 		
 		// first directory block pointer
@@ -989,21 +988,11 @@ void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f,
 				}
 				db->file_blocks[dim_array] = 0;
 				
-				//~ // fixes positions inside the array
-				//~ int* ptr = db->file_blocks+dim_array;
-				//~ while(*(ptr+1)){
-					//~ *ptr = *(ptr+1);
-					//~ ptr++;
-				//~ }
-				//~ *ptr = 0;
-				
 				DiskDriver_writeBlock(disk, db, curr_block);
 				break;
 			}
 		}
-		
-		//~ free(db);
-		
+				
 		// updates d->dcb->num_entries in disk
 		f->directory->num_entries--;
 		DiskDriver_writeBlock(disk, f->directory, f->directory->fcb.block_in_disk);
@@ -1012,6 +1001,7 @@ void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f,
 
 		int next_block = f->fcb->header.next_block;
 		
+		// frees every block of the file
 		while(next_block != -1) {
 			DiskDriver_readBlock(f->sfs->disk, file, next_block);
 			
@@ -1019,8 +1009,6 @@ void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f,
 			
 			next_block = file->header.next_block;
 		}
-		
-		
 		
 		DiskDriver_freeBlock(disk, f->fcb->fcb.block_in_disk);
 		DiskDriver_flush(disk);
@@ -1032,7 +1020,10 @@ void SimpleFS_free_file_dir(DiskDriver* disk, DirectoryHandle* d, FileHandle* f,
 
 int SimpleFS_remove_aux(DirectoryHandle* d, FileHandle* f, char* filename, int control){
 	
+	// tries to open filename
 	f = SimpleFS_openFile(d, filename);
+	
+	// tries to change directory
 	int ret = SimpleFS_changeDir(d, filename);
 	
 	// if filename is a directory
@@ -1050,15 +1041,17 @@ int SimpleFS_remove_aux(DirectoryHandle* d, FileHandle* f, char* filename, int c
 		
 		int h = d->dcb->num_entries;
 		
+		// recursively remove the files contained in names
 		for(i = 0; i < h; i++){
 			control += SimpleFS_remove_aux(d, f, names[i], control);
 		}
 		
-		//~ for(i = 0; i < d->dcb->num_entries; i++) {
-			//~ free(names[i]);
-		//~ }
 		free(names);
+		
+		// remove the directory once empty
 		SimpleFS_free_file_dir(d->sfs->disk, d, f, 1);
+		
+		// returns to the parent directory
 		SimpleFS_changeDir(d, "..");
 		
 	}
@@ -1067,6 +1060,7 @@ int SimpleFS_remove_aux(DirectoryHandle* d, FileHandle* f, char* filename, int c
 		
 		control++;
 		
+		// remove filename
 		SimpleFS_free_file_dir(f->sfs->disk, d, f, 0);	
 	}
 	
@@ -1084,16 +1078,9 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename) {
 	if(!d || !filename) return -1;
 	
 	FileHandle* f = NULL;
-	int block = d->dcb->fcb.block_in_disk;
 		
+	// remove auxiliary function
 	int ret = SimpleFS_remove_aux(d, f, filename, 0);
-	
-	DiskDriver_readBlock(d->sfs->disk, d->dcb, block);
-	d->current_block = &(d->dcb->header);
-	DiskDriver_readBlock(d->sfs->disk, d->directory, d->dcb->fcb.directory_block);
-	d->pos_in_block = block;
-	d->pos_in_dir=0;
-	
 	
 	SimpleFS_close(f);
 	

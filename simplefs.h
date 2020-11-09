@@ -57,10 +57,8 @@ typedef struct {
   int file_blocks[ (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) ];
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
-
-
-
-
+  
+  
   
 typedef struct {
   DiskDriver* disk;
@@ -104,10 +102,8 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename);
 // reads in the (preallocated) blocks array, the name of all files in a directory 
 int SimpleFS_readDir(char** names, DirectoryHandle* d);
 
-
 // opens a file in the  directory d. The file should be exisiting
 FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename);
-
 
 // closes a file handle (destroyes it)
 int SimpleFS_close(FileHandle* f);
@@ -130,7 +126,7 @@ int SimpleFS_seek(FileHandle* f, int pos);
 // seeks for a directory in d. If dirname is equal to ".." it goes one level up
 // 0 on success, negative value on error
 // it does side effect on the provided handle
- int SimpleFS_changeDir(DirectoryHandle* d, char* dirname);
+int SimpleFS_changeDir(DirectoryHandle* d, char* dirname);
 
 // creates a new directory in the current one (stored in fs->current_directory_block)
 // 0 on success

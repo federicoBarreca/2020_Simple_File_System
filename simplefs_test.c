@@ -165,7 +165,126 @@ int main(int argc, char** argv) {
 	//FILE SYSTEM TEST
 	else if(strcmp(test, "simplefs") == 0){
 		printf("SIMPLE FILE SYSTEM TEST\n");
+		
+		// SimpleFS_init(SimpleFS* fs, DiskDriver* disk)
+		// SimpleFS_format(SimpleFS* fs)
+		printf("\n*** Testing SimpleFS_init(SimpleFS* fs, DiskDriver* disk)) ***\n");
+		printf("*** Testing SimpleFS_format(SimpleFS* fs) ***\n");
+		SimpleFS* fs = (SimpleFS*) malloc(sizeof(SimpleFS));
+		DiskDriver* disk = (DiskDriver*) malloc(sizeof(DiskDriver));
+		
+		DiskDriver_init(disk, TEST_PATH, BLOCKS);
 	
+		DirectoryHandle * directory_handle = SimpleFS_init(fs, disk);
+		if(directory_handle) {
+			printf("\nFile System created and initlialized successfully\n");
+		}else{
+			printf("\nFile System creation error\n");
+		}
+		
+		// SimpleFS_createFile(DirectoryHandle* d, const char* filename)
+		printf("\n*** Testing SimpleFS_createFile(DirectoryHandle* d, const char* filename) ***\n");
+		int i, ret, num_file = 5;
+		FileHandle* fl = (FileHandle*) malloc(sizeof(FileHandle));
+		char filename[125];
+		for(i = 0; i < num_file; i++) {
+			
+			sprintf(filename, "file_%d.txt", directory_handle->dcb->num_entries);
+			fl = SimpleFS_createFile(directory_handle,filename);
+			if(fl) {
+			printf("%s created successfully in dir %s\n", filename, directory_handle->dcb->fcb.name);
+			
+			}
+			else{
+				printf("%s creation error\n", filename);
+			}
+		}
+			
+		printf("\nTrying to create a file that already exixts\n");
+		fl = SimpleFS_createFile(directory_handle,"file_4.txt");
+		if(fl != NULL) {
+			printf("%s created successfully in dir %s\n", "file_4.txt", directory_handle->dcb->fcb.name);
+			
+		}else{
+			printf("%s creation error: file already created in dir %s\n", "file_4.txt", directory_handle->dcb->fcb.name);
+		}
+	
+		// SimpleFS_openFile(DirectoryHandle* d, const char* filename)
+		printf("\n*** Testing SimpleFS_openFile(DirectoryHandle* d, const char* filename) ***\n");
+		printf("Trying to open file_2.txt\n");
+		strcpy(filename,"file_2.txt");
+		fl = SimpleFS_openFile(directory_handle, filename);
+		if(fl) {
+			printf("%s opened successfully\n", fl->fcb->fcb.name);
+		}else{
+			printf("Opening %s error\n", fl->fcb->fcb.name);
+			
+		}		
+
+	 	// SimpleFS_mkDir(DirectoryHandle* d, char* dirname)
+		printf("\n*** SimpleFS_mkDir(DirectoryHandle* d, char* dirname) ***\n");
+		printf("Trying to make dir pluto in dir %s\n", directory_handle->dcb->fcb.name);
+		ret = SimpleFS_mkDir(directory_handle, "pluto");
+		if(ret == 0) {
+			printf("Directory created successfully\n");
+		}else{
+			printf("Directory creation error\n");
+		}
+
+	 	// SimpleFS_readDir(char** names, DirectoryHandle* d)
+		printf("\n*** SimpleFS_readDir(char** names, DirectoryHandle* d) ***\n");
+		printf("Number elements in dir %s = %d\n" ,  directory_handle->dcb->fcb.name, directory_handle->dcb->num_entries);
+		char ** list = (char**) malloc(sizeof(char*)*directory_handle->dcb->num_entries);
+		for(i = 0; i < directory_handle->dcb->num_entries; i++) {
+			list[i] = (char*) malloc(125);
+		}
+		SimpleFS_readDir(list, directory_handle);
+		for(i = 0; i < directory_handle->dcb->num_entries; i++) {
+			printf(" - > %s\n", list[i]);
+		}
+		
+		// SimpleFS_changeDir(DirectoryHandle* d, char* dirname)
+		printf("\n*** SimpleFS_changeDir(DirectoryHandle* d, char* dirname) ***\n");
+		printf("Currently in dir %s, ", directory_handle->dcb->fcb.name);
+		printf("changing to \"..\" ret=> %d", SimpleFS_changeDir(directory_handle, ".."));
+		printf(", now in %s \n", directory_handle->dcb->fcb.name);
+		
+		printf("Currently in dir %s, ", directory_handle->dcb->fcb.name);
+		printf("changing to \"pluto\" ret=> %d", SimpleFS_changeDir(directory_handle, "pluto"));
+		printf(", now in %s \n", directory_handle->dcb->fcb.name);
+		
+		printf("Currently in dir = %s, ", directory_handle->dcb->fcb.name);
+		printf("changing to \"..\" ret=> %d", SimpleFS_changeDir(directory_handle, ".."));
+		printf(", now in %s \n", directory_handle->dcb->fcb.name);
+		
+		printf("Currently in dir %s, ", directory_handle->dcb->fcb.name);
+		printf("changing to \"..\" ret=> %d", SimpleFS_changeDir(directory_handle, ".."));
+		printf(", now in %s \n", directory_handle->dcb->fcb.name);
+		
+		// SimpleFS_write(FileHandle* f, void* data, int size)
+		printf("\n*** SimpleFS_write(FileHandle* f, void* data, int size) ***\n");
+		char* string = "Sora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofySora, Donald and GoofyAO";
+		printf("Writing in %s:\n%s\n", fl->fcb->fcb.name, string);
+		ret = SimpleFS_write(fl, string, strlen(string));
+		printf("\nLength of the string = %ld\n", strlen(string));
+		printf("%d bytes written\n", ret);
+		printf("%d size in bytes\n", fl->fcb->fcb.size_in_bytes);
+		printf("%d blocks written\n", fl->fcb->fcb.size_in_blocks);
+		
+		// SimpleFS_read(FileHandle* f, void* data, int size)
+		// SimpleFS_seek(FileHandle* f, int pos)
+		printf("\n*** SimpleFS_read(FileHandle* f, void* data, int size) ***\n");
+		printf("*** SimpleFS_seek(FileHandle* f, int pos) ***\n");
+		int size = fl->fcb->fcb.size_in_bytes;
+		char data[size];
+		SimpleFS_read(fl, (void*)data, size);
+		printf("%s now contains:\n%s\n", fl->fcb->fcb.name, data);
+		printf("\nChanging the file cursor to 80 and writing INSERT in the file\n");
+		ret = SimpleFS_seek(fl, 80);
+		ret = SimpleFS_write(fl, " INSERT ", strlen(" INSERT "));
+		SimpleFS_read(fl, (void*)data, size);
+		printf("%s now contains:\n%s\n", fl->fcb->fcb.name, data);
+
 	}
 	else{
 		printf("\033[0;31m"); 
